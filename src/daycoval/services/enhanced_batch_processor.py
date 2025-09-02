@@ -5,6 +5,7 @@ Aumenta significativamente a taxa de sucesso em processamentos batch.
 
 import time
 import traceback
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
@@ -12,13 +13,17 @@ import logging
 
 import click
 
-from ..core.models import ReportResponse, SyntheticProfitabilityRequest, Portfolio
+# Adicionar o diretório raiz do projeto ao Python path para importar utils
+project_root = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(project_root))
+
+from utils.backoff_utils import with_backoff_jitter, CircuitBreakerOpenError
+from ..core.models import ReportResponse, SyntheticProfitabilityRequest, ProfitabilityRequest, BankStatementRequest, Portfolio, ReportRequest
 from ..core.exceptions import DaycovalError
 from ..core.failed_portfolio_manager import (
     FailedPortfolioManager, classify_error, get_failed_portfolio_manager
 )
 from .profitability_reports import ProfitabilityReportService
-from utils.backoff_utils import with_backoff_jitter, CircuitBreakerOpenError
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +53,7 @@ class EnhancedBatchProcessor:
     def _process_single_portfolio_with_retry(
         self,
         portfolio: Portfolio,
-        request: SyntheticProfitabilityRequest
+        request: ReportRequest
     ) -> Optional[ReportResponse]:
         """
         Processa um portfolio com retry inteligente.
@@ -64,14 +69,24 @@ class EnhancedBatchProcessor:
             # Rate limiting básico
             time.sleep(self.rate_limit_delay)
             
-            # Processar o relatório
-            report = self.service.get_synthetic_profitability_report_sync(request)
+            # Processar o relatório baseado no tipo de request
+            if isinstance(request, SyntheticProfitabilityRequest):
+                report = self.service.get_synthetic_profitability_report_sync(request)
+                endpoint = "1048"
+            elif isinstance(request, ProfitabilityRequest):
+                report = self.service.get_profitability_report_sync(request)
+                endpoint = "1799"
+            elif isinstance(request, BankStatementRequest):
+                report = self.service.get_bank_statement_report_sync(request)
+                endpoint = "1988"
+            else:
+                raise ValueError(f"Tipo de request não suportado: {type(request)}")
             
             # Remover da lista de falhas se estava lá
             self.failure_manager.remove_success(portfolio.id)
             
             self.stats.record_success(portfolio.id)
-            logger.info(f"✅ Sucesso: {portfolio.id} ({portfolio.name})")
+            logger.info(f"✅ Sucesso: {portfolio.id} ({portfolio.name}) - Endpoint {endpoint}")
             
             return report
             
@@ -79,12 +94,22 @@ class EnhancedBatchProcessor:
             # Classificar e registrar a falha
             failure_type = classify_error(e)
             
+            # Determinar endpoint para logging de erro
+            if isinstance(request, SyntheticProfitabilityRequest):
+                endpoint = "1048"
+            elif isinstance(request, ProfitabilityRequest):
+                endpoint = "1799"
+            elif isinstance(request, BankStatementRequest):
+                endpoint = "1988"
+            else:
+                endpoint = "unknown"
+            
             self.failure_manager.record_failure(
                 portfolio_id=portfolio.id,
                 portfolio_name=portfolio.name,
                 failure_type=failure_type,
                 error_message=str(e),
-                endpoint="1048",
+                endpoint=endpoint,
                 request_params=request.to_api_params(),
                 stack_trace=traceback.format_exc()
             )
@@ -98,7 +123,7 @@ class EnhancedBatchProcessor:
     def process_portfolio_batch(
         self,
         portfolios: List[Portfolio],
-        base_request: SyntheticProfitabilityRequest,
+        base_request: ReportRequest,
         save_individual: bool = True,
         output_dir: Optional[Path] = None
     ) -> Tuple[List[ReportResponse], 'BatchProcessingStats']:
@@ -123,18 +148,50 @@ class EnhancedBatchProcessor:
             try:
                 click.echo(f"🔄 Processando {i}/{len(portfolios)}: {portfolio.id} ({portfolio.name})")
                 
-                # Personalizar request para este portfolio
-                individual_request = SyntheticProfitabilityRequest(
-                    portfolio=portfolio,
-                    date=base_request.date,
-                    format=base_request.format,
-                    report_type=base_request.report_type,
-                    daily_base=base_request.daily_base,
-                    start_date=base_request.start_date,
-                    end_date=base_request.end_date,
-                    profitability_index_type=base_request.profitability_index_type,
-                    emit_d0_opening_position=base_request.emit_d0_opening_position
-                )
+                # Personalizar request para este portfolio baseado no tipo
+                if isinstance(base_request, SyntheticProfitabilityRequest):
+                    individual_request = SyntheticProfitabilityRequest(
+                        portfolio=portfolio,
+                        date=base_request.date,
+                        format=base_request.format,
+                        report_type=base_request.report_type,
+                        daily_base=base_request.daily_base,
+                        start_date=base_request.start_date,
+                        end_date=base_request.end_date,
+                        profitability_index_type=base_request.profitability_index_type,
+                        emit_d0_opening_position=base_request.emit_d0_opening_position
+                    )
+                elif isinstance(base_request, ProfitabilityRequest):
+                    individual_request = ProfitabilityRequest(
+                        portfolio=portfolio,
+                        date=base_request.date,
+                        format=base_request.format,
+                        report_type=base_request.report_type,
+                        report_date=base_request.report_date,
+                        left_report_name=base_request.left_report_name,
+                        omit_logo=base_request.omit_logo,
+                        use_short_portfolio_name=base_request.use_short_portfolio_name,
+                        use_long_title_name=base_request.use_long_title_name,
+                        handle_shared_adjustment_movement=base_request.handle_shared_adjustment_movement,
+                        cdi_index=base_request.cdi_index
+                    )
+                elif isinstance(base_request, BankStatementRequest):
+                    individual_request = BankStatementRequest(
+                        portfolio=portfolio,
+                        date=base_request.date,
+                        format=base_request.format,
+                        report_type=base_request.report_type,
+                        start_date=base_request.start_date,
+                        end_date=base_request.end_date,
+                        agency=base_request.agency,
+                        account=base_request.account,
+                        days=base_request.days,
+                        left_report_name=base_request.left_report_name,
+                        omit_logo=base_request.omit_logo,
+                        use_short_portfolio_name=base_request.use_short_portfolio_name
+                    )
+                else:
+                    raise ValueError(f"Tipo de request não suportado para batch: {type(base_request)}")
                 
                 # Processar com retry inteligente
                 report = self._process_single_portfolio_with_retry(portfolio, individual_request)
@@ -171,7 +228,7 @@ class EnhancedBatchProcessor:
     
     def process_failed_portfolios_retry(
         self,
-        base_request: SyntheticProfitabilityRequest,
+        base_request: ReportRequest,
         save_individual: bool = True,
         output_dir: Optional[Path] = None,
         max_portfolios: Optional[int] = None

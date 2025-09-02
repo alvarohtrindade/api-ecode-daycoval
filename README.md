@@ -606,6 +606,116 @@ daycoval profitability relatorio-rentabilidade-sintetica \
 # Resultado: PDF com análise detalhada de performance no período
 ```
 
+## 🚀 Processamento em Lote (Batch)
+
+O sistema suporta processamento em lote para todos os endpoints, com retry inteligente e recuperação de falhas.
+
+### ✨ Características do Processamento Batch
+
+- **Retry Inteligente**: Até 5 tentativas com backoff exponencial e jitter
+- **Circuit Breaker**: Proteção contra falhas em cascata da API
+- **Rate Limiting**: Controle automático de taxa para evitar sobrecarga
+- **Relatórios de Progresso**: Acompanhe o processamento em tempo real
+- **Persistência de Falhas**: Sistema inteligente de checkpoint para reprocessamento
+- **Recuperação Automática**: Comando para reprocessar apenas os que falharam
+
+### 📊 Batch - Relatório de Rentabilidade (Endpoint 1799)
+
+```bash
+# Processamento em lote com lista de carteiras inline
+daycoval profitability batch-rentabilidade \
+    --portfolios "17485,17486,17487" \
+    --format CSVBR \
+    --data 2024-01-31 \
+    --indiceCDI CDI \
+    --output-dir ./reports
+
+# Processamento em lote com arquivo de carteiras
+daycoval profitability batch-rentabilidade \
+    --portfolios-file examples/portfolios_exemplo.txt \
+    --format PDF \
+    --trataMovimentoAjusteComp \
+    --usaNomeLongoTitulo \
+    --output-dir ./reports
+```
+
+### 🏦 Batch - Extrato Conta Corrente (Endpoint 1988)
+
+```bash
+# Processamento em lote para extratos
+daycoval profitability batch-extrato-conta-corrente \
+    --portfolios "17485,17486,17487" \
+    --format CSVBR \
+    --dataInicial 2024-01-01 \
+    --dataFinal 2024-01-31 \
+    --agencia "00019" \
+    --conta "0000000123" \
+    --output-dir ./reports
+
+# Com arquivo de portfolios e configurações avançadas
+daycoval profitability batch-extrato-conta-corrente \
+    --portfolios-file examples/portfolios_exemplo.txt \
+    --format PDF \
+    --dataInicial 2024-01-01 \
+    --agencia "00019" \
+    --conta "0000000123" \
+    --dias 30 \
+    --nomeRelatorioEsquerda \
+    --output-dir ./reports
+```
+
+### 📝 Formato do Arquivo de Portfolios
+
+Crie um arquivo de texto simples com um ID de portfolio por linha:
+
+```text
+# examples/portfolios_exemplo.txt
+17485
+17486
+17487
+17488
+17489
+```
+
+### 📈 Monitoramento do Processamento
+
+Durante a execução, você verá:
+
+```bash
+🚀 Processamento em lote - Relatório de Rentabilidade (1799)
+   Portfolios: 5
+   Formato: CSVBR
+
+🔄 Processando 1/5: 17485 (FUNDO_EXEMPLO_01)
+      ✅ Processado: 2.45 MB
+      📁 Salvo: RENTABILIDADE_FUNDO_EXEMPLO_01_2024-01-31.csv
+
+🔄 Processando 2/5: 17486 (FUNDO_EXEMPLO_02)
+      ❌ Falha final após retries: API timeout
+
+📊 RESUMO DO PROCESSAMENTO:
+   ✅ Sucessos: 4
+   ❌ Falhas: 1
+   📈 Taxa de Sucesso: 80.0%
+
+✅ Processamento concluído!
+   Sucessos: 4/5
+   Taxa de sucesso: 80.0%
+```
+
+### 🔄 Reprocessamento de Falhas
+
+O sistema automaticamente salva informações sobre portfolios que falharam. Use o processador enhanced para reprocessar apenas os que tiveram problema:
+
+```python
+# Exemplo programático para reprocessar falhas
+from daycoval.services.enhanced_batch_processor import create_enhanced_batch_processor
+
+processor = create_enhanced_batch_processor()
+# O método process_failed_portfolios_retry() reprocessa automaticamente
+# apenas os portfolios que falharam anteriormente
+```
+
 ## 🛠️ Solução de Problemas
 
 ### Erro: "No module named 'utils'"
