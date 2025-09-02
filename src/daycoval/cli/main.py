@@ -14,6 +14,7 @@ from ..core.exceptions import DaycovalError
 from .commands.daily import daily_cli
 from .commands.quoteholder import quoteholder_cli
 from .commands.profitability import profitability_cli
+from .commands.batch_enhanced import batch_enhanced_cli
 # from .commands.database import database_cli  # Comentado temporariamente
 
 
@@ -348,6 +349,7 @@ def db_refresh():
 cli.add_command(daily_cli, name='daily')
 cli.add_command(quoteholder_cli, name='quoteholder') 
 cli.add_command(profitability_cli, name='profitability')
+cli.add_command(batch_enhanced_cli, name='batch-enhanced')
 # cli.add_command(database_cli, name='db')  # Comentado temporariamente
 
 @cli.command('test-profitability')
