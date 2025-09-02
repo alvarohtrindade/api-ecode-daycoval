@@ -7,6 +7,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, Any, Union
 
+# Constantes
+DEFAULT_ALL_PORTFOLIOS_LABEL = "TODAS_AS_CARTEIRAS"
+
 
 class ReportFormat(Enum):
     """Formatos de relatório suportados."""
@@ -67,7 +70,7 @@ class Portfolio:
 @dataclass
 class ReportRequest:
     """Requisição de relatório."""
-    portfolio: Portfolio
+    portfolio: Optional[Portfolio]
     date: datetime
     format: ReportFormat
     report_type: ReportType
@@ -89,7 +92,7 @@ class ReportResponse:
     content: Union[bytes, str]
     content_type: str
     filename: str
-    portfolio: Portfolio
+    portfolio: Optional[Portfolio]
     date: datetime
     format: ReportFormat
     size_bytes: int
@@ -292,7 +295,6 @@ class SyntheticProfitabilityRequest(ReportRequest):
     def to_api_params(self) -> Dict[str, Any]:
         """Converte para parâmetros da API."""
         params = {
-            "carteiraId": int(self.portfolio.id),  
             "format": self.format.value,
             "baseDiaria": self.daily_base,
             "nomeRelatorioEsquerda": self.left_report_name,
@@ -301,6 +303,10 @@ class SyntheticProfitabilityRequest(ReportRequest):
             "tipoRentabilidadeIndice": self.profitability_index_type,
             "emitirPosicaoDeD0Abertura": self.emit_d0_opening_position
         }
+        
+        # carteiraId é opcional - se omitido, executa para todas as carteiras
+        if self.portfolio:
+            params["carteiraId"] = int(self.portfolio.id)
         
         
         if self.daily_base and self.start_date and self.end_date:

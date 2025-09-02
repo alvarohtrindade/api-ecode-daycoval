@@ -9,7 +9,7 @@ import requests
 
 from ..core.client import APIClient
 from ..core.models import (
-    DailyReportRequest, ReportResponse, Portfolio, ReportFormat, ReportType
+    DailyReportRequest, ReportResponse, Portfolio, ReportFormat, ReportType, DEFAULT_ALL_PORTFOLIOS_LABEL
 )
 from ..core.exceptions import APIError, ValidationError, ReportProcessingError, EmptyReportError, TimeoutError
 from ..utils.file_utils import sanitize_filename, generate_filename
@@ -88,8 +88,10 @@ class DailyReportService:
                     raise EmptyReportError("Conteúdo vazio recebido")
         
         # Gerar nome do arquivo
+        # Proteger contra portfolio None
+        portfolio_name = request.portfolio.name if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
         filename = generate_filename(
-            portfolio_name=request.portfolio.name,
+            portfolio_name=portfolio_name,
             date=request.date,
             format=request.format
         )
@@ -107,7 +109,8 @@ class DailyReportService:
     
     async def get_report(self, request: DailyReportRequest) -> ReportResponse:
         """Obtém relatório diário de forma assíncrona."""
-        logger.info(f"Buscando relatório diário para {request.portfolio.id} em {request.date.strftime('%Y-%m-%d')}")
+        portfolio_info = f"{request.portfolio.id}" if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
+        logger.info(f"Buscando relatório diário para {portfolio_info} em {request.date.strftime('%Y-%m-%d')}")
         
         try:
             # Fazer requisição
@@ -123,12 +126,14 @@ class DailyReportService:
             return report_response
             
         except Exception as e:
-            logger.error(f"Erro ao obter relatório para {request.portfolio.id}: {e}")
+            portfolio_info = f"{request.portfolio.id}" if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
+            logger.error(f"Erro ao obter relatório para {portfolio_info}: {e}")
             raise
     
     def get_report_sync(self, request: DailyReportRequest) -> ReportResponse:
         """Obtém relatório diário de forma síncrona."""
-        logger.info(f"Buscando relatório diário para {request.portfolio.id} em {request.date.strftime('%Y-%m-%d')}")
+        portfolio_info = f"{request.portfolio.id}" if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
+        logger.info(f"Buscando relatório diário para {portfolio_info} em {request.date.strftime('%Y-%m-%d')}")
         
         try:
             # Fazer requisição síncrona
@@ -144,7 +149,8 @@ class DailyReportService:
             return report_response
             
         except Exception as e:
-            logger.error(f"Erro ao obter relatório para {request.portfolio.id}: {e}")
+            portfolio_info = f"{request.portfolio.id}" if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
+            logger.error(f"Erro ao obter relatório para {portfolio_info}: {e}")
             raise
     
     async def get_multiple_reports(

@@ -8,7 +8,7 @@ import click
 
 from ...config.portfolios import get_portfolio_manager
 from ...services.profitability_reports import create_profitability_service
-from ...core.models import ReportFormat, SyntheticProfitabilityRequest, ProfitabilityRequest
+from ...core.models import ReportFormat, SyntheticProfitabilityRequest, ProfitabilityRequest, DEFAULT_ALL_PORTFOLIOS_LABEL
 from ...core.exceptions import DaycovalError
 
 
@@ -19,7 +19,7 @@ def profitability_cli():
 
 
 @profitability_cli.command('synthetic')
-@click.argument('portfolio_id')
+@click.argument('portfolio_id', required=False)
 @click.option('--format', 'report_format', default='PDF',
               type=click.Choice(['PDF', 'CSVBR', 'CSVUS', 'TXTBR', 'TXTUS']))
 @click.option('--output-dir', default='./reports', help='Diretório de saída')
@@ -29,10 +29,11 @@ def profitability_cli():
 @click.option('--profitability-type', default=0, type=click.Choice(['0', '1', '2']),
               help='Tipo rentabilidade (0=Cadastro, 1=Início a Início, 2=Fim a Fim)')
 @click.option('--emit-d0', is_flag=True, help='Emitir posição D0 de abertura')
+@click.option('--all-portfolios', is_flag=True, help='Executar para todas as carteiras')
 @click.pass_context
 def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
               daily_base: bool, start_date: datetime, end_date: datetime,
-              profitability_type: str, emit_d0: bool):
+              profitability_type: str, emit_d0: bool, all_portfolios: bool):
     """Gera relatório de rentabilidade sintética (endpoint 1048)."""
     verbose = ctx.obj.get('verbose', False)
     
@@ -45,12 +46,25 @@ def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
         if not daily_base and (start_date or end_date):
             click.echo("⚠️  Datas fornecidas sem --daily-base serão ignoradas")
         
-        # Obter portfolio
-        portfolio_manager = get_portfolio_manager()
-        portfolio = portfolio_manager.get_portfolio(portfolio_id)
+        if not portfolio_id and not all_portfolios:
+            click.echo("❌ Especifique um portfolio_id ou use --all-portfolios", err=True)
+            return False
+            
+        if portfolio_id and all_portfolios:
+            click.echo("❌ Especifique apenas um: portfolio_id OU --all-portfolios", err=True)
+            return False
+        
+        # Obter portfolio (se especificado)
+        portfolio = None
+        if portfolio_id:
+            portfolio_manager = get_portfolio_manager()
+            portfolio = portfolio_manager.get_portfolio(portfolio_id)
         
         click.echo(f"📊 Gerando relatório de rentabilidade sintética:")
-        click.echo(f"   Portfolio: {portfolio.id} ({portfolio.name})")
+        if portfolio:
+            click.echo(f"   Portfolio: {portfolio.id} ({portfolio.name})")
+        else:
+            click.echo(f"   Portfolio: {DEFAULT_ALL_PORTFOLIOS_LABEL}")
         click.echo(f"   Formato: {report_format}")
         click.echo(f"   Base diária: {'Sim' if daily_base else 'Não'}")
         if daily_base:
@@ -547,3 +561,102 @@ def _show_batch_statistics(processing_errors, timeout_errors, empty_errors):
             click.echo(f"   {pid}")
         if len(empty_errors) > 5:
             click.echo(f"   ... e mais {len(empty_errors) - 5}")
+
+
+# Comando direto para endpoint 1048 seguindo especificação exata
+@profitability_cli.command('relatorio-rentabilidade-sintetica')
+@click.option('--carteiraId', type=int, help='Código da Carteira (opcional)')
+@click.option('--format', required=True, type=click.Choice(['PDF', 'CSVBR', 'CSVUS', 'TXTBR', 'TXTUS']),
+              help='Formato do relatório')
+@click.option('--baseDiaria', is_flag=True, help='Habilitar base diária')
+@click.option('--dataInicial', help='Data inicial (YYYY-MM-DD) - obrigatório se baseDiaria=true')
+@click.option('--dataFinal', help='Data final (YYYY-MM-DD) - obrigatório se baseDiaria=true') 
+@click.option('--nomeRelatorioEsquerda', is_flag=True, default=True, help='Nome relatório à esquerda')
+@click.option('--omiteLogotipo', is_flag=True, help='Omitir logotipo')
+@click.option('--usaNomeCurtoCarteira', is_flag=True, help='Usar nome curto da carteira')
+@click.option('--tipoRentabilidadeIndice', default=0, type=click.Choice([0, 1, 2]),
+              help='Tipo rentabilidade: 0|1|2')
+@click.option('--emitirPosicaoDeD0Abertura', is_flag=True, help='Emitir posição D0 de abertura')
+@click.option('--output-dir', default='./reports', help='Diretório de saída')
+@click.pass_context
+def relatorio_rentabilidade_sintetica(ctx, carteiraid: int, format: str, basediaria: bool,
+                                     datainicial: str, datafinal: str, nomerelatorioesquerda: bool,
+                                     omitelogotipo: bool, usanomecurtocarteira: bool,
+                                     tiporentabilidadeindice: int, emitirposicaoded0abertura: bool,
+                                     output_dir: str):
+    """Endpoint POST /relatorio-rentabilidade-sintetica (ID: 1048)."""
+    verbose = ctx.obj.get('verbose', False)
+    
+    try:
+        # Validações condicionais da especificação
+        if basediaria and (not datainicial or not datafinal):
+            click.echo("❌ Para baseDiaria=true, dataInicial e dataFinal são obrigatórios", err=True)
+            return False
+        
+        # Obter portfolio se especificado
+        portfolio = None
+        if carteiraid:
+            portfolio_manager = get_portfolio_manager()
+            portfolio = portfolio_manager.get_portfolio(str(carteiraid))
+        
+        # Criar requisição usando a especificação exata
+        from datetime import datetime
+        
+        request_date = datetime.now()
+        start_date = None
+        end_date = None
+        
+        if basediaria and datainicial and datafinal:
+            start_date = datetime.strptime(datainicial, '%Y-%m-%d')
+            end_date = datetime.strptime(datafinal, '%Y-%m-%d')
+            request_date = end_date
+        
+        # Criar requisição 
+        request = SyntheticProfitabilityRequest(
+            portfolio=portfolio,
+            date=request_date,
+            format=ReportFormat(format),
+            report_type=1048,
+            daily_base=basediaria,
+            start_date=start_date,
+            end_date=end_date,
+            profitability_index_type=tiporentabilidadeindice,
+            emit_d0_opening_position=emitirposicaoded0abertura,
+            left_report_name=nomerelatorioesquerda,
+            omit_logo=omitelogotipo,
+            use_short_portfolio_name=usanomecurtocarteira
+        )
+        
+        click.echo(f"🚀 Executando endpoint 1048 - Relatório Rentabilidade Sintética")
+        if portfolio:
+            click.echo(f"   Carteira: {portfolio.id} ({portfolio.name})")
+        else:
+            click.echo(f"   Carteira: {DEFAULT_ALL_PORTFOLIOS_LABEL} (carteiraId omitido)")
+        click.echo(f"   Formato: {format}")
+        
+        # Configurar serviço e executar
+        service = create_profitability_service()
+        report = service.get_synthetic_profitability_report_sync(request)
+        
+        # Salvar arquivo
+        from pathlib import Path
+        output_path = Path(output_dir)
+        success = service.save_report(report, output_path)
+        
+        if success:
+            click.echo(f"✅ Relatório salvo: {output_path / report.filename}")
+            click.echo(f"📊 Tamanho: {report.size_mb:.2f} MB")
+            return True
+        else:
+            click.echo("❌ Erro ao salvar relatório", err=True)
+            return False
+            
+    except DaycovalError as e:
+        click.echo(f"❌ Erro Daycoval: {e}", err=True)
+        return False
+    except Exception as e:
+        click.echo(f"❌ Erro inesperado: {e}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return False

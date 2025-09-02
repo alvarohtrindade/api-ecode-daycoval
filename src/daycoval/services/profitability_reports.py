@@ -10,7 +10,7 @@ import requests
 
 from ..core.client import APIClient
 from ..core.models import (
-    ReportResponse, Portfolio, ReportFormat
+    ReportResponse, Portfolio, ReportFormat, DEFAULT_ALL_PORTFOLIOS_LABEL
 )
 from ..core.exceptions import APIError, ValidationError, ReportProcessingError, EmptyReportError, TimeoutError
 from ..utils.file_utils import sanitize_filename
@@ -85,8 +85,10 @@ class ProfitabilityReportService:
             report_type = "RELATORIO"
         
         # Usar a função padrão que já consulta CADFUN
+        # Se portfolio for None (todos os portfolios), usar nome genérico
+        portfolio_name = request.portfolio.name if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
         filename = generate_filename(
-            portfolio_name=request.portfolio.name,
+            portfolio_name=portfolio_name,
             date=request.date if hasattr(request, 'date') and request.date else datetime.now(),
             format=request.format,
             report_type=report_type
@@ -105,7 +107,8 @@ class ProfitabilityReportService:
     
     def get_synthetic_profitability_report_sync(self, request) -> ReportResponse:
         """Versão síncrona do relatório sintético."""
-        logger.info(f"Buscando relatório de rentabilidade sintética para {request.portfolio.id}")
+        portfolio_info = f"{request.portfolio.id}" if request.portfolio else DEFAULT_ALL_PORTFOLIOS_LABEL
+        logger.info(f"Buscando relatório de rentabilidade sintética para {portfolio_info}")
         
         try:
             response = self.client.post_sync(
@@ -119,7 +122,7 @@ class ProfitabilityReportService:
             return report_response
             
         except Exception as e:
-            logger.error(f"Erro ao obter relatório sintético para {request.portfolio.id}: {e}")
+            logger.error(f"Erro ao obter relatório sintético para {portfolio_info}: {e}")
             raise
     
     def get_profitability_report_sync(self, request) -> ReportResponse:

@@ -1,3 +1,31 @@
+Metadata-Version: 2.1
+Name: daycoval-api
+Version: 2.0.0
+Summary: Sistema limpo e modular para API Daycoval - Relatórios automatizados
+Home-page: https://github.com/catalise/daycoval-api
+Author: Catalise Analytics
+Author-email: dev@catalise.com.br
+License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/catalise/daycoval-api/issues
+Project-URL: Documentation, https://github.com/catalise/daycoval-api/wiki
+Keywords: daycoval,api,financial,reports,automation,portfolios,funds
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: Topic :: Office/Business :: Financial
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Provides-Extra: docs
+Provides-Extra: test
+
 # Sistema Unificado de Relatórios Daycoval
 
 Sistema completo para geração automatizada de relatórios da API Daycoval, com suporte a múltiplos endpoints e processamento em lote.
@@ -447,3 +475,4 @@ Para dúvidas ou problemas:
 **Última atualização:** 02/09/2025  
 **Endpoints suportados:** 32 (Carteira Diária), 45 (Posição de Cotistas), 1048 (Rentabilidade Sintética)  
 **Fundos configurados:** 95
+
