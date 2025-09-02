@@ -1,0 +1,364 @@
+# Sistema Unificado de Relatórios Daycoval
+
+Sistema completo para geração automatizada de relatórios da API Daycoval, com suporte a múltiplos endpoints e processamento em lote.
+
+## 📋 Índice
+
+- [Visão Geral](#visão-geral)
+- [Instalação e Configuração](#instalação-e-configuração)
+- [Relatórios Disponíveis](#relatórios-disponíveis)
+- [Guia de Uso](#guia-de-uso)
+- [Parâmetros Avançados](#parâmetros-avançados)
+- [Exemplos Práticos](#exemplos-práticos)
+- [Solução de Problemas](#solução-de-problemas)
+
+## 🎯 Visão Geral
+
+Este sistema permite gerar dois tipos principais de relatórios da API Daycoval:
+
+| Endpoint | Tipo de Relatório | Descrição |
+|----------|-------------------|-----------|
+| **32** | **Carteira Diária** | Relatórios de posição da carteira em uma data específica |
+| **45** | **Posição de Cotistas** | Relatórios detalhados dos cotistas por fundo |
+
+### ✨ Principais Funcionalidades
+
+- ✅ **Processamento Individual ou em Lote** (1 fundo ou todos os 95 fundos)
+- ✅ **Rate Limiting Automático** (evita sobrecarga na API)
+- ✅ **Retry Inteligente** (reprocessa falhas automaticamente)
+- ✅ **Múltiplos Formatos** (PDF, CSV, TXT, JSON)
+- ✅ **Configuração Flexível** (defaults inteligentes + customização)
+- ✅ **Logs Detalhados** (rastreamento completo do processo)
+
+## 🚀 Instalação e Configuração
+
+### 1. Configuração Inicial
+
+```bash
+# Execute o script de configuração
+python setup.py
+
+# Isso irá:
+# - Verificar dependências
+# - Criar diretórios necessários
+# - Validar arquivo de configuração
+# - Testar conectividade com API
+```
+
+### 2. Estrutura de Arquivos
+
+```
+daycoval/
+├── api.py                    # Módulo principal da API
+├── batch_processor.py        # Processamento em lote
+├── quoteholder_reports.py    # Módulo para relatórios de cotistas
+├── cli.py                   # Interface de linha de comando
+├── portfolios.json          # Configuração dos fundos
+├── utils/
+│   └── logging_utils.py     # Sistema de logs
+└── reports/                 # Diretório de saída (criado automaticamente)
+```
+
+### 3. Arquivo de Configuração
+
+O arquivo `portfolios.json` contém:
+- **95 fundos mapeados** (ID → Nome)
+- **Configurações padrão** para relatórios de cotistas
+- **Configurações de rate limiting**
+
+## 📊 Relatórios Disponíveis
+
+### 🏦 Relatório de Carteira Diária (Endpoint 32)
+
+**O que contém:**
+- Posições dos ativos na carteira
+- Valores de mercado
+- Rentabilidade
+- Composição da carteira
+
+**Quando usar:**
+- Relatórios diários de posição
+- Acompanhamento de performance
+- Análise de composição de portfólio
+
+### 👥 Relatório de Posição de Cotistas (Endpoint 45)
+
+**O que contém:**
+- Lista detalhada de cotistas
+- Quantidade de cotas por investidor
+- Informações de assessores
+- Classificação por tipo de investidor
+
+**Quando usar:**
+- Controle de base de cotistas
+- Relatórios regulamentares
+- Análise de distribuição
+
+## 📖 Guia de Uso
+
+### Sintaxe Básica
+
+```bash
+python cli.py [opções_globais] [tipo_relatório] [modo] [parâmetros]
+```
+
+**Componentes:**
+- **Opções globais**: `--format`, `--output-dir`, `--verbose`
+- **Tipo de relatório**: `daily` ou `quoteholder`
+- **Modo**: `single` (1 fundo) ou `batch` (múltiplos fundos)
+- **Parâmetros**: Específicos de cada tipo de relatório
+
+### 🏦 Relatórios de Carteira Diária
+
+#### Um Fundo Específico
+```bash
+# Formato PDF (padrão)
+python cli.py daily single --portfolio 4471709 --date 2025-07-31
+
+# Formato CSV Brasileiro
+python cli.py --format CSVBR daily single --portfolio 4471709 --date 2025-07-31
+
+# Com preview das primeiras linhas (apenas texto)
+python cli.py daily single --portfolio 4471709 --date 2025-07-31 --preview
+```
+
+#### Todos os Fundos (Lote)
+```bash
+# Todos os 95 fundos em PDF
+python cli.py daily batch --all-portfolios --date 2025-07-31
+
+# Fundos específicos
+python cli.py daily batch --portfolio-list "4471709,8205906,8310432" --date 2025-07-31
+
+# Com diretório personalizado
+python cli.py --output-dir ./relatorios_diarios daily batch --all-portfolios --date 2025-07-31
+```
+
+### 👥 Relatórios de Posição de Cotistas
+
+#### Um Fundo Específico
+```bash
+# Configuração básica (usa defaults)
+python cli.py quoteholder single --portfolio 4471709 --date 2025-07-31
+
+# Com range específico de clientes
+python cli.py quoteholder single --portfolio 4471709 --date 2025-07-31 --client-range "1000:5000"
+
+# Para classe específica de investidor (0 = Pessoa Jurídica)
+python cli.py quoteholder single --portfolio 4471709 --date 2025-07-31 --investor-class 0
+
+# Com headers Excel habilitados
+python cli.py quoteholder single --portfolio 4471709 --date 2025-07-31 --excel-headers true
+```
+
+#### Todos os Fundos (Lote)
+```bash
+# Todos os fundos com configuração padrão
+python cli.py quoteholder batch --all-portfolios --date 2025-07-31
+
+# Todos os fundos, apenas Pessoa Física (classe 2)
+python cli.py quoteholder batch --all-portfolios --date 2025-07-31 --investor-class 2
+
+# Fundos específicos com parâmetros customizados
+python cli.py quoteholder batch --portfolio-list "4471709,8205906" --date 2025-07-31 \
+    --client-range "1:999999" \
+    --investor-class -1 \
+    --excel-headers true
+```
+
+### 🔧 Comandos Utilitários
+
+```bash
+# Listar todos os fundos disponíveis
+python cli.py list portfolios
+
+# Listar classes de investidor disponíveis
+python cli.py list investor-classes
+
+# Ver ajuda completa
+python cli.py --help
+
+# Ver ajuda de um comando específico
+python cli.py quoteholder single --help
+```
+
+## ⚙️ Parâmetros Avançados
+
+### Opções Globais (Aplicam-se a Todos os Comandos)
+
+| Parâmetro | Padrão | Descrição |
+|-----------|--------|-----------|
+| `--format` | `PDF` | Formato: `PDF`, `CSVBR`, `CSVUS`, `TXTBR`, `TXTUS`, `JSON` |
+| `--output-dir` | `./reports` | Diretório onde salvar os arquivos |
+| `--config` | `portfolios.json` | Arquivo de configuração |
+| `--verbose` | Desabilitado | Logs detalhados |
+
+### Parâmetros Específicos - Relatórios de Cotistas
+
+| Parâmetro | Tipo | Descrição | Exemplo |
+|-----------|------|-----------|---------|
+| `--client-range` | String | Range de clientes | `"1000:5000"` |
+| `--advisor-range` | String | Range de assessores | `"1:999"` |
+| `--advisor2-range` | String | Range de assessores 2 | `"0:0"` |
+| `--investor-class` | Integer | Classe de investidor (-1 a 21) | `-1` (Todos) |
+| `--show-if-code` | Boolean | Mostrar código IF | `true`/`false` |
+| `--excel-headers` | Boolean | Headers formato Excel | `true`/`false` |
+| `--message` | String | Mensagem personalizada | `"Relatório mensal"` |
+
+### Classes de Investidor
+
+| Código | Descrição |
+|--------|-----------|
+| `-1` | **Todos** (recomendado para uso geral) |
+| `0` | PJU - Pessoa Jurídica |
+| `1` | PRI - Private |
+| `2` | VAR - Varejo |
+| `3` | FAC - Fundos em Cotas |
+| `4` | PCO - Por Conta e Ordem |
+| `5` | INS - Institucional |
+| ... | (21 classes no total - use `python cli.py list investor-classes`) |
+
+## 💡 Exemplos Práticos
+
+### Cenário 1: Relatório Diário de Todos os Fundos
+```bash
+# Gerar PDFs de carteira diária para todos os 95 fundos
+python cli.py daily batch --all-portfolios --date 2025-07-31
+
+# Resultado: 95 arquivos PDF em ./reports/
+# Formato: CATALISE_FIC_FIDC_RL_20250731.pdf
+```
+
+### Cenário 2: Relatório de Cotistas com Filtros
+```bash
+# Apenas investidores pessoa física (classe 2) em formato CSV
+python cli.py --format CSVBR quoteholder batch --all-portfolios --date 2025-07-31 --investor-class 2
+
+# Resultado: 95 arquivos CSV com apenas cotistas pessoa física
+# Formato: POSICAO_COTISTAS_CATALISE_FIC_FIDC_RL_20250731.csv
+```
+
+### Cenário 3: Análise de Fundo Específico
+```bash
+# Relatório completo de um fundo (carteira + cotistas)
+python cli.py daily single --portfolio 4471709 --date 2025-07-31
+python cli.py quoteholder single --portfolio 4471709 --date 2025-07-31
+
+# Resultado: 2 arquivos PDF com visão completa do fundo
+```
+
+### Cenário 4: Relatório Regulatório
+```bash
+# Cotistas institucionais (classe 5) com headers Excel
+python cli.py quoteholder batch --all-portfolios --date 2025-07-31 \
+    --investor-class 5 \
+    --excel-headers true \
+    --message "Relatório CVM mensal"
+```
+
+## 🛠️ Solução de Problemas
+
+### Erro: "No module named 'utils'"
+```bash
+# Problema: Caminho do módulo utils
+# Solução: Verificar se utils/ está no diretório correto
+# Ou executar de: C:\Users\atrindade\catalise\DataAnalytics\
+```
+
+### Erro: "Invalid URL 'None/report/reports/32'"
+```bash
+# Problema: BASE_URL não definida no api.py
+# Solução: Verificar se BASE_URL = "https://apigw.daycoval.com.br/custodia"
+```
+
+### Erro: "unrecognized arguments: --format"
+```bash
+# Problema: Ordem incorreta dos argumentos
+# ❌ Errado: python cli.py quoteholder --format PDF batch
+# ✅ Correto: python cli.py --format PDF quoteholder batch
+```
+
+### Rate Limiting (429 Too Many Requests)
+```bash
+# O sistema tem rate limiting automático
+# Se persistir, ajustar em portfolios.json:
+# "rate_limit": { "max_calls": 20, "period_seconds": 60 }
+```
+
+### Arquivos Não Gerados
+```bash
+# Verificar permissões do diretório
+# Usar --verbose para logs detalhados
+python cli.py --verbose daily single --portfolio 4471709 --date 2025-07-31
+```
+
+## 📁 Estrutura dos Arquivos Gerados
+
+### Nomenclatura Automática
+
+**Relatórios Diários:**
+```
+NOME_DO_FUNDO_YYYYMMDD.extensao
+Exemplo: CATALISE_FIC_FIDC_RL_20250731.pdf
+```
+
+**Relatórios de Cotistas:**
+```
+POSICAO_COTISTAS_NOME_DO_FUNDO_YYYYMMDD.extensao
+Exemplo: POSICAO_COTISTAS_CATALISE_FIC_FIDC_RL_20250731.pdf
+```
+
+### Organização Sugerida
+```
+reports/
+├── daily/                   # Relatórios de carteira diária
+│   ├── 2025-07-31/
+│   └── 2025-08-01/
+├── quoteholders/            # Relatórios de cotistas
+│   ├── 2025-07-31/
+│   └── 2025-08-01/
+└── logs/                    # Logs do sistema
+```
+
+## 🚀 Scripts de Automação
+
+### Script Diário (Bash/PowerShell)
+```bash
+#!/bin/bash
+# Gerar relatórios diários automaticamente
+DATE=$(date +%Y-%m-%d)
+
+echo "Gerando relatórios para $DATE..."
+
+# Relatórios de carteira
+python cli.py daily batch --all-portfolios --date "$DATE" --output-dir "./reports/daily/$DATE"
+
+# Relatórios de cotistas
+python cli.py quoteholder batch --all-portfolios --date "$DATE" --output-dir "./reports/quoteholders/$DATE"
+
+echo "Concluído!"
+```
+
+### Agendamento (Windows Task Scheduler)
+```
+Programa: python
+Argumentos: cli.py daily batch --all-portfolios --date 2025-07-31
+Diretório: C:\caminho\para\daycoval\
+Horário: 08:00 (após fechamento do D-1)
+```
+
+## 📞 Suporte
+
+Para dúvidas ou problemas:
+
+1. **Verificar logs**: Usar `--verbose` para informações detalhadas
+2. **Consultar este README**: Exemplos e soluções comuns
+3. **Testar conectividade**: `python cli.py list portfolios`
+4. **Validar configuração**: `python setup.py`
+
+---
+
+**Versão:** 2.0  
+**Última atualização:** 01/08/2025  
+**Endpoints suportados:** 32 (Carteira Diária), 45 (Posição de Cotistas)  
+**Fundos configurados:** 95

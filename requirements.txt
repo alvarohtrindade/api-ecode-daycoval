@@ -1,0 +1,18 @@
+# Core dependencies
+requests>=2.25.0
+python-dotenv>=0.19.0
+mysql-connector-python>=8.0.0
+click>=8.0.0
+
+# Optional: for Python < 3.7 dataclasses support
+dataclasses;python_version<"3.7"
+
+# Development dependencies (optional)
+# Uncomment for development environment
+# pytest>=6.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.0.0
+# black>=22.0.0
+# isort>=5.10.0
+# flake8>=4.0.0
+# mypy>=0.950
