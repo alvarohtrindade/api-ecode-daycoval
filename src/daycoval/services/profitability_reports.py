@@ -10,7 +10,8 @@ import requests
 
 from ..core.client import APIClient
 from ..core.models import (
-    ReportResponse, Portfolio, ReportFormat, DEFAULT_ALL_PORTFOLIOS_LABEL
+    ReportResponse, Portfolio, ReportFormat, DEFAULT_ALL_PORTFOLIOS_LABEL,
+    ProfitabilityRequest, BankStatementRequest
 )
 from ..core.exceptions import APIError, ValidationError, ReportProcessingError, EmptyReportError, TimeoutError
 from ..utils.file_utils import sanitize_filename
@@ -142,6 +143,25 @@ class ProfitabilityReportService:
             
         except Exception as e:
             logger.error(f"Erro ao obter relatório de rentabilidade para {request.portfolio.id}: {e}")
+            raise
+    
+    def get_bank_statement_report_sync(self, request) -> ReportResponse:
+        """Obter relatório de Extrato Conta Corrente (endpoint 1988) de forma síncrona."""
+        logger.info(f"Buscando extrato conta corrente para carteira {request.portfolio.id}")
+        
+        try:
+            response = self.client.post_sync(
+                "/report/reports/1988",
+                request.to_api_params()
+            )
+            
+            report_response = self._parse_response(response, request, "1988")
+            
+            logger.info(f"Extrato conta corrente obtido com sucesso: {report_response.size_mb:.2f} MB")
+            return report_response
+            
+        except Exception as e:
+            logger.error(f"Erro ao obter extrato conta corrente para {request.portfolio.id}: {e}")
             raise
     
     def save_report(self, report: ReportResponse, output_dir: Path) -> bool:

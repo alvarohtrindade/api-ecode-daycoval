@@ -14,13 +14,15 @@ Sistema completo para geração automatizada de relatórios da API Daycoval, com
 
 ## 🎯 Visão Geral
 
-Este sistema permite gerar três tipos principais de relatórios da API Daycoval:
+Este sistema permite gerar cinco tipos principais de relatórios da API Daycoval:
 
 | Endpoint | Tipo de Relatório | Descrição |
 |----------|-------------------|-----------|
 | **32** | **Carteira Diária** | Relatórios de posição da carteira em uma data específica |
 | **45** | **Posição de Cotistas** | Relatórios detalhados dos cotistas por fundo |
 | **1048** | **Rentabilidade Sintética** | Relatórios de rentabilidade sintética com base diária opcional |
+| **1799** | **Relatório de Rentabilidade** | Relatórios de rentabilidade com índice CDI configurável |
+| **1988** | **Extrato Conta Corrente** | Extratos de conta corrente por período e agência/conta |
 
 ### ✨ Principais Funcionalidades
 
@@ -116,6 +118,45 @@ O arquivo `portfolios.json` contém:
 - Comparação de rentabilidade em períodos históricos
 - Relatórios executivos de gestão
 - Monitoramento de indicadores customizáveis
+
+### 💰 Relatório de Rentabilidade (Endpoint 1799) ⭐ NOVO
+
+**O que contém:**
+- Análise de rentabilidade com índice CDI configurável
+- Indicadores de performance personalizáveis
+- Tratamento de movimento de ajuste compartilhado
+- Flexibilidade na configuração de títulos e logotipos
+
+**Características avançadas:**
+- ✅ **Índice CDI Configurável**: Permite definir diferentes índices de referência
+- ✅ **Formatação Personalizável**: Nome longo/curto no título, posição do nome do relatório
+- ✅ **Tratamento de Ajustes**: Opção para tratar movimentos de ajuste compartilhado
+- ✅ **Data Opcional**: Usa data atual se não especificada
+
+**Quando usar:**
+- Relatórios de rentabilidade com referência CDI específica
+- Análise personalizada de performance
+- Comparações com índices de mercado customizados
+
+### 🏦 Extrato Conta Corrente (Endpoint 1988) ⭐ NOVO
+
+**O que contém:**
+- Extratos bancários detalhados por período
+- Movimentações de conta corrente específica
+- Filtros por agência e conta
+- Controle de período com dias configuráveis
+
+**Características avançadas:**
+- ✅ **Filtro por Agência/Conta**: Busca específica por dados bancários
+- ✅ **Período Flexível**: Data inicial obrigatória, final opcional
+- ✅ **Controle de Dias**: Parâmetro adicional para controle temporal
+- ✅ **Múltiplos Formatos**: PDF, CSV, TXT com formatação BR/US
+
+**Quando usar:**
+- Conciliação bancária detalhada
+- Auditoria de movimentações por conta
+- Relatórios de compliance bancário
+- Análise de fluxo de caixa por agência
 
 ## 📖 Guia de Uso
 
@@ -257,6 +298,78 @@ daycoval profitability synthetic 111376 --format PDF --daily-base \
 # Todas as carteiras
 daycoval profitability synthetic --all-portfolios --format CSVBR
 ```
+
+### 💰 Relatórios de Rentabilidade (Endpoint 1799) ⭐ NOVO
+
+#### Comando Direto
+```bash
+# Relatório de rentabilidade básico em PDF
+daycoval profitability relatorio-rentabilidade \
+    --carteira 111376 \
+    --format PDF \
+    --indiceCDI CDI
+
+# Relatório com data específica e configurações personalizadas
+daycoval profitability relatorio-rentabilidade \
+    --carteira 111376 \
+    --format CSVBR \
+    --data 2022-10-07 \
+    --indiceCDI CDI \
+    --usaNomeLongoTitulo \
+    --trataMovimentoAjusteComp
+```
+
+#### Parâmetros Disponíveis (Endpoint 1799)
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+|-----------|------|-------------|-----------|---------|
+| `--carteira` | Integer | ✅ | Código da carteira | `111376` |
+| `--format` | String | ✅ | Formato do relatório | PDF, CSVBR, CSVUS, TXTBR, TXTUS |
+| `--data` | String | ❌ | Data de referência | 2022-10-07 |
+| `--indiceCDI` | String | ❌ | Índice CDI | CDI (default) |
+| `--nomeRelatorioEsquerda` | Boolean | ❌ | Nome relatório à esquerda | Default: true |
+| `--omiteLogotipo` | Boolean | ❌ | Omitir logotipo | Default: false |
+| `--usaNomeCurtoCarteira` | Boolean | ❌ | Nome curto da carteira | Default: false |
+| `--usaNomeLongoTitulo` | Boolean | ❌ | Nome longo no título | Default: false |
+| `--trataMovimentoAjusteComp` | Boolean | ❌ | Tratar movimento ajuste | Default: true |
+
+### 🏦 Extratos Conta Corrente (Endpoint 1988) ⭐ NOVO
+
+#### Comando Direto
+```bash
+# Extrato conta corrente básico
+daycoval profitability extrato-conta-corrente \
+    --carteira 17485 \
+    --format PDF \
+    --dataInicial 2024-05-01 \
+    --agencia 00019 \
+    --conta 0000000123
+
+# Extrato com período definido e formatação CSV
+daycoval profitability extrato-conta-corrente \
+    --carteira 17485 \
+    --format CSVBR \
+    --dataInicial 2024-05-01 \
+    --dataFinal 2024-05-31 \
+    --agencia 00019 \
+    --conta 0000000123 \
+    --dias 30
+```
+
+#### Parâmetros Disponíveis (Endpoint 1988)
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+|-----------|------|-------------|-----------|---------|
+| `--carteira` | Integer | ✅ | Código da carteira | `17485` |
+| `--format` | String | ✅ | Formato do relatório | PDF, CSVBR, CSVUS, TXTBR, TXTUS |
+| `--dataInicial` | String | ✅ | Data inicial | 2024-05-01 |
+| `--dataFinal` | String | ❌ | Data final | 2024-05-31 |
+| `--agencia` | String | ✅ | Código da agência | 00019 |
+| `--conta` | String | ✅ | Número da conta | 0000000123 |
+| `--dias` | Integer | ❌ | Número de dias | Default: 0 |
+| `--nomeRelatorioEsquerda` | Boolean | ❌ | Nome relatório à esquerda | Default: true |
+| `--omiteLogotipo` | Boolean | ❌ | Omitir logotipo | Default: false |
+| `--usaNomeCurtoCarteira` | Boolean | ❌ | Nome curto da carteira | Default: false |
 
 #### Parâmetros Disponíveis (Endpoint 1048)
 

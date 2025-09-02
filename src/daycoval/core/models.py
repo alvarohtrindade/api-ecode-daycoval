@@ -1,7 +1,7 @@
 """
 Modelos de dados para a API Daycoval.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -375,6 +375,71 @@ class ProfitabilityRequest(ReportRequest):
             params["data"] = self.report_date.strftime('%Y-%m-%d')
         
        
+        if self.parameters:
+            params.update(self.parameters)
+        
+        return params
+
+
+@dataclass  
+class BankStatementRequest(ReportRequest):
+    """Requisição para Extrato Conta Corrente (endpoint 1988)."""
+    # Todos os campos devem ter valores padrão devido à herança de ReportRequest
+    start_date: datetime = field(default_factory=datetime.now)
+    agency: str = field(default="")  
+    account: str = field(default="")
+    end_date: Optional[datetime] = field(default=None)
+    days: int = field(default=0)
+    left_report_name: bool = field(default=True)
+    omit_logo: bool = field(default=False)
+    use_short_portfolio_name: bool = field(default=False)
+    
+    def __post_init__(self):
+        """Validação após inicialização."""
+        super().__post_init__()
+        
+        # Validar se campos obrigatórios foram fornecidos (não são valores padrão)
+        if not self.agency or self.agency == "":
+            raise ValueError("Agência é obrigatória")
+            
+        if not self.account or self.account == "":
+            raise ValueError("Conta é obrigatória")
+        
+        # Validar datas
+        if self.start_date > datetime.now():
+            raise ValueError("Data inicial não pode ser futura")
+        
+        if self.end_date and self.end_date > datetime.now():
+            raise ValueError("Data final não pode ser futura")
+            
+        if self.end_date and self.start_date > self.end_date:
+            raise ValueError("Data inicial não pode ser posterior à data final")
+            
+        # Validar dias
+        if self.days < 0:
+            raise ValueError("Número de dias não pode ser negativo")
+    
+    def to_api_params(self) -> Dict[str, Any]:
+        """Converte para parâmetros da API."""
+        params = {
+            "carteira": int(self.portfolio.id),
+            "format": self.format.value,
+            "dataInicial": self.start_date.strftime('%Y-%m-%d'),
+            "agencia": self.agency,
+            "conta": self.account,
+            "dias": self.days,
+            "nomeRelatorioEsquerda": self.left_report_name,
+            "omiteLogotipo": self.omit_logo,
+            "usaNomeCurtoCarteira": self.use_short_portfolio_name
+        }
+        
+        # dataFinal é opcional
+        if self.end_date:
+            params["dataFinal"] = self.end_date.strftime('%Y-%m-%d')
+        else:
+            params["dataFinal"] = ""
+        
+        # Adicionar parâmetros extras
         if self.parameters:
             params.update(self.parameters)
         
