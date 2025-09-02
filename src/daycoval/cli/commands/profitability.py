@@ -18,8 +18,13 @@ def profitability_cli():
     pass
 
 
-@profitability_cli.command('synthetic')
-@click.argument('portfolio_id', required=False)
+@profitability_cli.group('synthetic-profitability')
+def synthetic_profitability():
+    """Comandos para relatórios de rentabilidade sintética (endpoint 1048)."""
+    pass
+
+@synthetic_profitability.command('single')
+@click.argument('portfolio_id')
 @click.option('--format', 'report_format', default='PDF',
               type=click.Choice(['PDF', 'CSVBR', 'CSVUS', 'TXTBR', 'TXTUS']))
 @click.option('--output-dir', default='./reports', help='Diretório de saída')
@@ -29,12 +34,11 @@ def profitability_cli():
 @click.option('--profitability-type', default=0, type=click.Choice(['0', '1', '2']),
               help='Tipo rentabilidade (0=Cadastro, 1=Início a Início, 2=Fim a Fim)')
 @click.option('--emit-d0', is_flag=True, help='Emitir posição D0 de abertura')
-@click.option('--all-portfolios', is_flag=True, help='Executar para todas as carteiras')
 @click.pass_context
-def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
-              daily_base: bool, start_date: datetime, end_date: datetime,
-              profitability_type: str, emit_d0: bool, all_portfolios: bool):
-    """Gera relatório de rentabilidade sintética (endpoint 1048)."""
+def synthetic_single(ctx, portfolio_id: str, report_format: str, output_dir: str,
+                    daily_base: bool, start_date: datetime, end_date: datetime,
+                    profitability_type: str, emit_d0: bool):
+    """Gera relatório de rentabilidade sintética para um portfolio específico."""
     verbose = ctx.obj.get('verbose', False)
     
     try:
@@ -46,25 +50,12 @@ def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
         if not daily_base and (start_date or end_date):
             click.echo("⚠️  Datas fornecidas sem --daily-base serão ignoradas")
         
-        if not portfolio_id and not all_portfolios:
-            click.echo("❌ Especifique um portfolio_id ou use --all-portfolios", err=True)
-            return False
-            
-        if portfolio_id and all_portfolios:
-            click.echo("❌ Especifique apenas um: portfolio_id OU --all-portfolios", err=True)
-            return False
-        
-        # Obter portfolio (se especificado)
-        portfolio = None
-        if portfolio_id:
-            portfolio_manager = get_portfolio_manager()
-            portfolio = portfolio_manager.get_portfolio(portfolio_id)
+        # Obter portfolio
+        portfolio_manager = get_portfolio_manager()
+        portfolio = portfolio_manager.get_portfolio(portfolio_id)
         
         click.echo(f"📊 Gerando relatório de rentabilidade sintética:")
-        if portfolio:
-            click.echo(f"   Portfolio: {portfolio.id} ({portfolio.name})")
-        else:
-            click.echo(f"   Portfolio: {DEFAULT_ALL_PORTFOLIOS_LABEL}")
+        click.echo(f"   Portfolio: {portfolio.id} ({portfolio.name})")
         click.echo(f"   Formato: {report_format}")
         click.echo(f"   Base diária: {'Sim' if daily_base else 'Não'}")
         if daily_base:
@@ -87,11 +78,12 @@ def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
         # Configurar serviço
         service = create_profitability_service()
         
-        # Obter relatório
+        output_path = Path(output_dir)
+        
+        # Obter relatório individual
         report = service.get_synthetic_profitability_report_sync(request)
         
         # Salvar arquivo
-        output_path = Path(output_dir)
         success = service.save_report(report, output_path)
         
         if success:
@@ -112,6 +104,165 @@ def synthetic(ctx, portfolio_id: str, report_format: str, output_dir: str,
             import traceback
             traceback.print_exc()
         return False
+
+@synthetic_profitability.command('all')
+@click.option('--format', 'report_format', default='PDF',
+              type=click.Choice(['PDF', 'CSVBR', 'CSVUS', 'TXTBR', 'TXTUS']))
+@click.option('--output-dir', default='./reports', help='Diretório de saída')
+@click.option('--daily-base', is_flag=True, help='Usar base diária (requer datas)')
+@click.option('--start-date', type=click.DateTime(['%Y-%m-%d']), help='Data inicial (apenas com --daily-base)')
+@click.option('--end-date', type=click.DateTime(['%Y-%m-%d']), help='Data final (apenas com --daily-base)')
+@click.option('--profitability-type', default=0, type=click.Choice(['0', '1', '2']),
+              help='Tipo rentabilidade (0=Cadastro, 1=Início a Início, 2=Fim a Fim)')
+@click.option('--emit-d0', is_flag=True, help='Emitir posição D0 de abertura')
+@click.pass_context
+def synthetic_all(ctx, report_format: str, output_dir: str,
+                 daily_base: bool, start_date: datetime, end_date: datetime,
+                 profitability_type: str, emit_d0: bool):
+    """Gera relatórios de rentabilidade sintética para todos os portfolios (individual + consolidado)."""
+    verbose = ctx.obj.get('verbose', False)
+    
+    try:
+        # Validações
+        if daily_base and (not start_date or not end_date):
+            click.echo("❌ Para base diária, --start-date e --end-date são obrigatórios", err=True)
+            return False
+        
+        if not daily_base and (start_date or end_date):
+            click.echo("⚠️  Datas fornecidas sem --daily-base serão ignoradas")
+        
+        click.echo(f"📊 Gerando relatório de rentabilidade sintética:")
+        click.echo(f"   Portfolio: {DEFAULT_ALL_PORTFOLIOS_LABEL}")
+        click.echo(f"   Formato: {report_format}")
+        click.echo(f"   Base diária: {'Sim' if daily_base else 'Não'}")
+        if daily_base:
+            click.echo(f"   Período: {start_date.strftime('%Y-%m-%d')} a {end_date.strftime('%Y-%m-%d')}")
+        click.echo(f"   Tipo rentabilidade: {profitability_type}")
+        
+        # Criar requisição base (sem portfolio)
+        base_request = SyntheticProfitabilityRequest(
+            portfolio=None,  # Todas as carteiras
+            date=end_date if daily_base and end_date else datetime.now(),
+            format=ReportFormat(report_format),
+            report_type=1048,
+            daily_base=daily_base,
+            start_date=start_date if daily_base else None,
+            end_date=end_date if daily_base else None,
+            profitability_index_type=int(profitability_type),
+            emit_d0_opening_position=emit_d0
+        )
+        
+        # Configurar serviço
+        service = create_profitability_service()
+        output_path = Path(output_dir)
+        
+        # Gerar relatórios individuais + consolidado
+        return _process_all_portfolios_synthetic(
+            service, base_request, output_path, report_format, daily_base, 
+            start_date, end_date, profitability_type, emit_d0
+        )
+        
+    except DaycovalError as e:
+        click.echo(f"❌ Erro Daycoval: {e}", err=True)
+        return False
+    except Exception as e:
+        click.echo(f"❌ Erro inesperado: {e}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return False
+
+def _process_all_portfolios_synthetic(
+    service, base_request, output_path: Path, report_format: str, daily_base: bool,
+    start_date: datetime, end_date: datetime, profitability_type: str, emit_d0: bool
+) -> bool:
+    """
+    Processa relatórios sintéticos para todos os portfolios.
+    Gera arquivos individuais + consolidado.
+    """
+    try:
+        # Obter todos os portfolios
+        portfolio_manager = get_portfolio_manager()
+        all_portfolios = portfolio_manager.get_all_portfolios()
+        portfolio_list = list(all_portfolios.values())
+        
+        click.echo(f"📊 Processando TODOS os {len(portfolio_list)} portfolios:")
+        click.echo(f"   - Arquivos individuais por fundo")
+        click.echo(f"   - Arquivo consolidado final")
+        click.echo(f"   Formato: {report_format}")
+        if daily_base:
+            click.echo(f"   Período: {start_date.strftime('%Y-%m-%d')} a {end_date.strftime('%Y-%m-%d')}")
+        
+        individual_reports = []
+        successful = 0
+        failed = 0
+        
+        # 1. Gerar relatórios individuais
+        click.echo("\\n🔄 Gerando relatórios individuais...")
+        for i, portfolio in enumerate(portfolio_list, 1):
+            try:
+                click.echo(f"   [{i}/{len(portfolio_list)}] {portfolio.id} ({portfolio.name})")
+                
+                # Criar requisição individual
+                individual_request = SyntheticProfitabilityRequest(
+                    portfolio=portfolio,
+                    date=end_date if daily_base and end_date else datetime.now(),
+                    format=ReportFormat(report_format),
+                    report_type=1048,
+                    daily_base=daily_base,
+                    start_date=start_date if daily_base else None,
+                    end_date=end_date if daily_base else None,
+                    profitability_index_type=int(profitability_type),
+                    emit_d0_opening_position=emit_d0
+                )
+                
+                # Obter e salvar relatório individual
+                report = service.get_synthetic_profitability_report_sync(individual_request)
+                
+                # Salvar arquivo individual
+                if service.save_report(report, output_path):
+                    individual_reports.append(report)
+                    successful += 1
+                    click.echo(f"      ✅ Salvo: {report.filename}")
+                else:
+                    failed += 1
+                    click.echo(f"      ❌ Erro ao salvar")
+                    
+            except Exception as e:
+                failed += 1
+                click.echo(f"      ❌ Erro: {e}")
+        
+        # 2. Gerar consolidado (apenas para CSV)
+        if report_format.startswith('CSV') and individual_reports:
+            click.echo("\\n🔄 Gerando arquivo consolidado...")
+            
+            consolidation_type = "SINTETICA" if daily_base else "SINTETICA"
+            date_str = (end_date or datetime.now()).strftime('%Y%m%d')
+            consolidated_filename = f"CONSOLIDADO_{consolidation_type}_TODOS_FUNDOS_{date_str}.csv"
+            consolidated_path = output_path / consolidated_filename
+            
+            if consolidate_csv_reports(individual_reports, consolidated_path, "1048"):
+                click.echo(f"      ✅ Consolidado: {consolidated_filename}")
+            else:
+                click.echo(f"      ❌ Erro no consolidado")
+        
+        # 3. Estatísticas finais
+        total = len(portfolio_list)
+        success_rate = (successful / total * 100) if total > 0 else 0
+        
+        click.echo(f"\\n🎯 RESULTADO FINAL:")
+        click.echo(f"   Total portfolios: {total}")
+        click.echo(f"   ✅ Sucessos: {successful}")
+        click.echo(f"   ❌ Falhas: {failed}")
+        click.echo(f"   📈 Taxa de sucesso: {success_rate:.1f}%")
+        click.echo(f"   📁 Diretório: {output_path}")
+        
+        return successful > 0
+        
+    except Exception as e:
+        click.echo(f"❌ Erro no processamento em lote: {e}")
+        return False
+
 
 def consolidate_csv_reports(
     reports: list, 

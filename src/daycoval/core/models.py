@@ -294,6 +294,9 @@ class SyntheticProfitabilityRequest(ReportRequest):
     
     def to_api_params(self) -> Dict[str, Any]:
         """Converte para parâmetros da API."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         params = {
             "format": self.format.value,
             "baseDiaria": self.daily_base,
@@ -307,15 +310,26 @@ class SyntheticProfitabilityRequest(ReportRequest):
         # carteiraId é opcional - se omitido, executa para todas as carteiras
         if self.portfolio:
             params["carteiraId"] = int(self.portfolio.id)
+            logger.info(f"✅ Portfolio especificado: {self.portfolio.id}")
+        else:
+            logger.info(f"✅ Portfolio: {DEFAULT_ALL_PORTFOLIOS_LABEL} (carteiraId omitido)")
         
         
         if self.daily_base and self.start_date and self.end_date:
             params["dataInicial"] = self.start_date.strftime('%Y-%m-%d')
             params["dataFinal"] = self.end_date.strftime('%Y-%m-%d')
+            logger.info(f"📅 Base diária ativada - Período: {params['dataInicial']} a {params['dataFinal']}")
+        elif self.daily_base:
+            logger.warning(f"⚠️ Base diária ativada mas datas não fornecidas: start_date={self.start_date}, end_date={self.end_date}")
+        else:
+            logger.info(f"📅 Base diária desativada - usando data atual da carteira")
         
         
         if self.parameters:
             params.update(self.parameters)
+        
+        # Log dos parâmetros finais enviados para API
+        logger.info(f"🚀 Parâmetros finais API endpoint 1048: {params}")
         
         return params
 

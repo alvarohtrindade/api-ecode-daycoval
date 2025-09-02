@@ -95,19 +95,25 @@ O arquivo `portfolios.json` contém:
 - Relatórios regulamentares
 - Análise de distribuição
 
-### 📈 Relatório de Rentabilidade Sintética (Endpoint 1048)
+### 📈 Relatório de Rentabilidade Sintética (Endpoint 1048) ⭐ NOVO
 
 **O que contém:**
-- Análise de rentabilidade sintética
-- Comparação com índices de referência
-- Métricas de performance ajustadas
-- Dados históricos de rentabilidade
+- Análise de rentabilidade sintética com base diária opcional
+- Comparação com índices de referência configuráveis
+- Métricas de performance ajustadas por período
+- Dados históricos personalizáveis por data
+
+**Características avançadas:**
+- ✅ **Portfolio Opcional**: Pode processar TODAS as carteiras quando omitido
+- ✅ **Base Diária**: Análise por período específico (dataInicial → dataFinal)
+- ✅ **Múltiplos Tipos**: Cadastro (0), Início a Início (1), Fim a Fim (2)
+- ✅ **Saída Dupla**: Individual por fundo + Consolidado (CSV)
 
 **Quando usar:**
-- Análise de performance de fundos
-- Comparação de rentabilidade
-- Relatórios de gestão
-- Acompanhamento de indicadores
+- Análise de performance de fundos específicos ou portfolio completo
+- Comparação de rentabilidade em períodos históricos
+- Relatórios executivos de gestão
+- Monitoramento de indicadores customizáveis
 
 ## 📖 Guia de Uso
 
@@ -181,7 +187,39 @@ python cli.py quoteholder batch --portfolio-list "4471709,8205906" --date 2025-0
     --excel-headers true
 ```
 
-### 📈 Relatórios de Rentabilidade Sintética
+### 📈 Relatórios de Rentabilidade Sintética (CORRIGIDO v2.1)
+
+**🔧 CORREÇÕES IMPLEMENTADAS:**
+- ✅ Correção do parser CLI: `--daily-base` não é mais interpretado como portfolio ID
+- ✅ Implementação de relatórios individuais + consolidado para `--all-portfolios`
+- ✅ Parâmetros de data agora funcionam corretamente com `--daily-base`
+
+#### Comando Synthetic Otimizado (RECOMENDADO)
+```bash
+# Portfolio específico com base diária (COMANDO CORRIGIDO)
+daycoval profitability synthetic \
+    --portfolio-id 1001 \
+    --daily-base \
+    --start-date 2025-08-01 \
+    --end-date 2025-08-29 \
+    --format PDF \
+    --profitability-type 0
+
+# TODOS os portfolios - gera 104 arquivos individuais + 1 consolidado
+daycoval profitability synthetic \
+    --all-portfolios \
+    --format CSVBR \
+    --daily-base \
+    --start-date 2025-08-01 \
+    --end-date 2025-08-29 \
+    --output-dir ./reports
+
+# Portfolio específico sem base diária
+daycoval profitability synthetic \
+    --portfolio-id 2050 \
+    --format PDF \
+    --profitability-type 1
+```
 
 #### Comando Direto (Endpoint 1048)
 ```bash
@@ -405,6 +443,93 @@ reports/
 └── logs/                    # Logs do sistema
 ```
 
+---
+
+## 🔥 NOVA ESTRUTURA CLI v2.5 - Rentabilidade Sintética (Endpoint 1048)
+
+### ⚡ Comandos Refatorados (IMPLEMENTAÇÃO FINAL)
+
+A estrutura CLI foi **completamente refatorada** baseada na análise do Gemini CLI 2.5 Pro para resolver os problemas de parsing e funcionalidade.
+
+#### 🎯 Comando: `synthetic-profitability single`
+
+**Portfolio específico com base diária:**
+```bash
+# Comando CORRETO para o caso de uso original reportado
+daycoval profitability synthetic-profitability single 12345 \
+    --daily-base \
+    --start-date 2025-08-01 \
+    --end-date 2025-08-29 \
+    --format PDF \
+    --profitability-type 0
+
+# Portfolio específico sem base diária
+daycoval profitability synthetic-profitability single 12345 \
+    --format CSVBR \
+    --profitability-type 1
+```
+
+#### 🎯 Comando: `synthetic-profitability all`
+
+**Todos os portfolios (individual + consolidado):**
+```bash
+# Todos com base diária - CSV (gera individual + consolidado)
+daycoval profitability synthetic-profitability all \
+    --daily-base \
+    --start-date 2025-08-01 \
+    --end-date 2025-08-29 \
+    --format CSVBR \
+    --profitability-type 0
+
+# Todos em PDF (apenas individuais)
+daycoval profitability synthetic-profitability all \
+    --format PDF \
+    --profitability-type 2
+```
+
+### 📊 Funcionalidades Implementadas
+
+| Funcionalidade | Status | Descrição |
+|----------------|--------|-----------|
+| ✅ **CLI Parsing** | **CORRIGIDO** | `daily-base` não é mais interpretado como portfolio ID |
+| ✅ **Saída Dupla** | **IMPLEMENTADO** | CSV: arquivos individuais + consolidado |
+| ✅ **Date Range** | **CORRIGIDO** | `--start-date` e `--end-date` funcionam com `--daily-base` |
+| ✅ **Logging** | **APRIMORADO** | Rastreamento detalhado dos parâmetros de API |
+| ✅ **Defensive Programming** | **APLICADO** | Proteção contra AttributeError em portfolios opcionais |
+
+### 🔍 Exemplo de Output
+
+**Comando:**
+```bash
+daycoval profitability synthetic-profitability all --format CSVBR --daily-base --start-date 2025-08-01 --end-date 2025-08-29
+```
+
+**Resultado esperado:**
+```
+📊 Processando TODOS os 95 portfolios:
+   - Arquivos individuais por fundo
+   - Arquivo consolidado final
+
+🔄 Gerando relatórios individuais...
+   [1/95] 12345 (FUNDO ALPHA FIDC)
+      ✅ Salvo: FUNDO_ALPHA_FIDC_SINTETICA_20250829.csv
+   [2/95] 12346 (FUNDO BETA FIDC)
+      ✅ Salvo: FUNDO_BETA_FIDC_SINTETICA_20250829.csv
+   ...
+
+🔄 Gerando arquivo consolidado...
+      ✅ Consolidado: CONSOLIDADO_SINTETICA_TODOS_FUNDOS_20250829.csv
+
+🎯 RESULTADO FINAL:
+   Total portfolios: 95
+   ✅ Sucessos: 93
+   ❌ Falhas: 2
+   📈 Taxa de sucesso: 97.9%
+   📁 Diretório: ./reports
+```
+
+---
+
 ## 🚀 Scripts de Automação
 
 ### Script Diário (Bash/PowerShell)
@@ -432,6 +557,31 @@ Diretório: C:\caminho\para\daycoval\
 Horário: 08:00 (após fechamento do D-1)
 ```
 
+## 🔧 Changelog v2.1 (02/09/2025)
+
+### Correções Críticas Implementadas
+
+**PROBLEMA RESOLVIDO:** Comando `synthetic` com erro de parsing
+- ❌ **ANTES**: `daycoval profitability synthetic daily-base --start-date...` → Erro: "Portfolio daily-base não encontrado"
+- ✅ **AGORA**: `daycoval profitability synthetic --daily-base --start-date...` → Funciona corretamente
+
+**PROBLEMA RESOLVIDO:** --all-portfolios gerando apenas consolidado
+- ❌ **ANTES**: `--all-portfolios` gerava apenas 1 arquivo consolidado
+- ✅ **AGORA**: `--all-portfolios` gera 104 arquivos individuais + 1 consolidado = 105 arquivos total
+
+**PROBLEMA RESOLVIDO:** Parâmetros de data ignorados
+- ❌ **ANTES**: `--start-date` e `--end-date` eram ignorados sem `--daily-base`
+- ✅ **AGORA**: Parâmetros de data funcionam corretamente com `--daily-base`
+
+### Comandos Corretos v2.1
+```bash
+# ✅ COMANDO CORRIGIDO (usar este)
+daycoval profitability synthetic --portfolio-id 1001 --daily-base --start-date 2025-08-01 --end-date 2025-08-29 --format PDF
+
+# ✅ TODOS OS PORTFOLIOS (105 arquivos gerados)
+daycoval profitability synthetic --all-portfolios --format CSVBR --daily-base --start-date 2025-08-01 --end-date 2025-08-29
+```
+
 ## 📞 Suporte
 
 Para dúvidas ou problemas:
@@ -440,6 +590,7 @@ Para dúvidas ou problemas:
 2. **Consultar este README**: Exemplos e soluções comuns
 3. **Testar conectividade**: `python cli.py list portfolios`
 4. **Validar configuração**: `python setup.py`
+5. **Testar comando synthetic**: `daycoval profitability synthetic --help`
 
 ---
 
