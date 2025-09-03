@@ -36,7 +36,7 @@ class EnhancedBatchProcessor:
         service: ProfitabilityReportService,
         failure_manager: Optional[FailedPortfolioManager] = None,
         max_parallel_requests: int = 3,
-        rate_limit_delay: float = 1.0
+        rate_limit_delay: float = 2.0  # Aumentado para 2s conforme recomendação Gemini
     ):
         self.service = service
         self.failure_manager = failure_manager or get_failed_portfolio_manager()

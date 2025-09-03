@@ -4,6 +4,7 @@ Permite retry inteligente e rastreamento detalhado de falhas.
 """
 
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -131,7 +132,9 @@ class FailedPortfolioManager:
             # Backup do arquivo atual
             if self.failures_file.exists():
                 backup_file = self.failures_file.with_suffix('.json.bak')
-                self.failures_file.rename(backup_file)
+                # Use os.replace() em vez de rename() para funcionar no Windows
+                # mesmo quando o arquivo de destino já existe
+                os.replace(str(self.failures_file), str(backup_file))
             
             with open(self.failures_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)

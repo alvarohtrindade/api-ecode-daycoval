@@ -122,7 +122,7 @@ def extrato_conta_corrente(ctx, carteira: int, format: str, datainicial: str, da
 @click.option('--output-dir', default='./reports', help='Diretório de saída')
 @click.pass_context
 def relatorio_rentabilidade(ctx, carteira: int, format: str, data: str, nomerelatorioesquerda: bool,
-                           omitelogotipo: bool, usanomecurtocarteira: bool, usanomolongotitulo: bool,
+                           omitelogotipo: bool, usanomecurtocarteira: bool, usanomelongotitulo: bool,
                            tratamovimentoajustecomp: bool, indicecdi: str, output_dir: str):
     """Endpoint POST /relatorio-rentabilidade (ID: 1799)."""
     verbose = ctx.obj.get('verbose', False)
@@ -147,7 +147,7 @@ def relatorio_rentabilidade(ctx, carteira: int, format: str, data: str, nomerela
             left_report_name=nomerelatorioesquerda,
             omit_logo=omitelogotipo,
             use_short_portfolio_name=usanomecurtocarteira,
-            use_long_title_name=usanomolongotitulo,
+            use_long_title_name=usanomelongotitulo,
             handle_shared_adjustment_movement=tratamovimentoajustecomp,
             cdi_index=indicecdi
         )
@@ -287,7 +287,7 @@ def test_endpoint(ctx, portfolio_id: str, endpoint: str):
 @click.pass_context
 def batch_rentabilidade(ctx, portfolios: str, portfolios_file: str, format: str, data: str,
                         nomerelatorioesquerda: bool, omitelogotipo: bool, usanomecurtocarteira: bool,
-                        usanomolongotitulo: bool, tratamovimentoajustecomp: bool, indicecdi: str,
+                        usanomelongotitulo: bool, tratamovimentoajustecomp: bool, indicecdi: str,
                         output_dir: str, save_individual: bool):
     """Processamento em lote de relatórios de rentabilidade (endpoint 1799)."""
     verbose = ctx.obj.get('verbose', False)
@@ -334,7 +334,7 @@ def batch_rentabilidade(ctx, portfolios: str, portfolios_file: str, format: str,
             left_report_name=nomerelatorioesquerda,
             omit_logo=omitelogotipo,
             use_short_portfolio_name=usanomecurtocarteira,
-            use_long_title_name=usanomolongotitulo,
+            use_long_title_name=usanomelongotitulo,
             handle_shared_adjustment_movement=tratamovimentoajustecomp,
             cdi_index=indicecdi
         )

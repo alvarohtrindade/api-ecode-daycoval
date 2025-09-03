@@ -34,14 +34,45 @@ class ProfitabilityReportService:
         """Converte resposta HTTP em modelo estruturado."""
         content_type = response.headers.get('Content-Type', '').lower()
         
+        # LOGGING AGRESSIVO para debugging conforme recomendação do Gemini
+        logger.info(f"Status Code: {response.status_code}")
+        logger.info(f"Content-Type recebido: {content_type}")
+        logger.info(f"Headers da resposta: {dict(response.headers)}")
+        
+        # Log das primeiras linhas da resposta para identificar erros
+        if response.content:
+            try:
+                preview = response.content[:500].decode('utf-8', errors='ignore')
+                logger.info(f"Preview do conteúdo (500 chars): {repr(preview)}")
+            except:
+                logger.info(f"Conteúdo binário, tamanho: {len(response.content)} bytes")
+        
+        # VALIDAÇÃO POR STATUS CODE primeiro
+        if response.status_code != 200:
+            error_body = response.text if hasattr(response, 'text') else str(response.content[:1000])
+            raise APIError(f"API retornou status {response.status_code}: {error_body}")
+        
         # Determinar se conteúdo é binário ou texto
         if request.format == ReportFormat.PDF or 'application/pdf' in content_type:
             content = response.content
             content_type = 'application/pdf'
             
-            # Validar PDF
-            if not content.startswith(b'%PDF') or len(content) < 1000:
-                raise EmptyReportError("PDF inválido ou vazio recebido")
+            # VALIDAÇÃO MELHORADA DE PDF
+            if not content or len(content) == 0:
+                raise EmptyReportError("Resposta vazia recebida da API")
+            
+            if not content.startswith(b'%PDF'):
+                # Se não é PDF, pode ser erro em formato texto - vamos logar
+                try:
+                    error_text = content.decode('utf-8', errors='ignore')[:1000]
+                    logger.error(f"Conteúdo recebido não é PDF válido. Conteúdo: {error_text}")
+                    raise EmptyReportError(f"API retornou erro em vez de PDF: {error_text}")
+                except:
+                    raise EmptyReportError("PDF inválido ou vazio recebido")
+            
+            if len(content) < 1000:
+                logger.warning(f"PDF muito pequeno: {len(content)} bytes")
+                raise EmptyReportError(f"PDF muito pequeno ({len(content)} bytes) - possível erro da API")
                 
         else:
             content = response.text
