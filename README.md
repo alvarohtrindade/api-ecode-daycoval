@@ -27,13 +27,30 @@ Este sistema permite gerar cinco tipos principais de relatórios da API Daycoval
 ### ✨ Principais Funcionalidades
 
 - ✅ **Processamento Individual ou em Lote** (1 fundo ou todos os 104 fundos)
+- ✅ **Cálculo Automático de Dias Úteis** (--n-days com calendário financeiro)
+- ✅ **Consolidação de Relatórios** (--consolidar múltiplos fundos em único arquivo)
 - ✅ **Rate Limiting Automático** (evita sobrecarga na API)
 - ✅ **Retry Inteligente Aprimorado** (sistema avançado de recuperação de falhas)
 - ✅ **Persistência de Falhas** (checkpoint system para reprocessamento)
 - ✅ **Taxa de Sucesso 90%+** (sistema enhanced batch com circuit breaker)
+- ✅ **Thread Safety** (cache seguro para múltiplas threads)
 - ✅ **Múltiplos Formatos** (PDF, CSV, TXT, JSON)
 - ✅ **Configuração Flexível** (defaults inteligentes + customização)
 - ✅ **Logs Detalhados** (rastreamento completo do processo)
+
+### 🆕 Novas Funcionalidades v2.1
+
+#### 📅 Cálculo Automático de Dias Úteis (--n-days)
+- **Integração com DW_CORPORATIVO.Dm_Calendario**: Consulta banco de dados para calcular dias úteis
+- **Cache inteligente**: Otimiza consultas repetidas com thread safety
+- **D-n notation**: `--n-days 1` = ontem útil, `--n-days 5` = 5 dias úteis atrás
+- **Disponível em TODOS os endpoints**: 32, 45, 1048, 1799, 1988
+
+#### 📊 Consolidação de Relatórios (--consolidar)
+- **Multi-fundo**: Processa todos os fundos e consolida em único arquivo
+- **Metadata incluída**: Informações sobre fonte, data de processamento, totais
+- **Formato CSV otimizado**: Conversão numérica inteligente (BR/US formats)
+- **Estatísticas automáticas**: Taxa de sucesso, tempo de processamento
 
 ## 🚀 Instalação e Configuração
 
@@ -479,6 +496,108 @@ O sistema Enhanced classifica falhas automaticamente e aplica estratégias espec
 └── failure_reports/            # Relatórios detalhados
     └── detailed_report_YYYYMMDD.csv
 ```
+
+## 🆕 Comandos Enhanced v2.1 - Com --n-days e --consolidar
+
+### 📅 Rentabilidade Sintética com Dias Úteis (Endpoint 1048)
+
+```bash
+# Relatório D-1 (ontem útil) para todas as carteiras consolidado
+daycoval ecode rentabilidade-sintetica \
+    --format CSVBR \
+    --n-days 1 \
+    --consolidar \
+    --saida ./reports
+
+# 🗓️  Calculando data útil D-1...
+#    Data de referência: 2025-09-03
+# 📊 Executando endpoint 1048 - TODAS AS CARTEIRAS (104)
+#    Consolidação: ✅ ATIVA (formato: CSV)
+# 🔄 Consolidando 94 relatórios...
+#    ✅ Arquivo consolidado: rentabilidade_sintetica_consolidado_20250904_143052.csv
+```
+
+### 📈 Relatório de Rentabilidade com Consolidação (Endpoint 1799)
+
+```bash
+# Relatório D-5 para carteira específica
+daycoval ecode relatorio-rentabilidade \
+    --carteira 1234 \
+    --format CSVBR \
+    --n-days 5 \
+    --indiceCDI CDI \
+    --saida ./reports
+
+# 🗓️  Calculando data útil D-5...
+#    Data de referência: 2025-08-28
+# 📈 Executando endpoint 1799 - Relatório de Rentabilidade
+#    Carteira: 1234 (FUNDO TESTE)
+#    Índice CDI: CDI
+```
+
+### 🏦 Extrato Conta Corrente com Período Útil (Endpoint 1988)
+
+```bash
+# Extrato D-7 a D-1 para todas as carteiras
+daycoval ecode extrato-conta-corrente \
+    --format CSVBR \
+    --n-days 1 \
+    --agencia "00019" \
+    --conta "0000000123" \
+    --consolidar \
+    --saida ./reports
+
+# 🗓️  Calculando período útil D-2 a D-1...
+#    Período calculado: 2025-09-01 a 2025-09-03
+# 🏦 Executando endpoint 1988 - TODAS AS CARTEIRAS (104)
+#    Agência: 00019, Conta: 0000000123
+#    Consolidação: ✅ ATIVA (formato: CSV)
+```
+
+### 👥 Posição de Cotistas com Dias Úteis (Endpoint 45)
+
+```bash
+# Posição D-3 consolidada para todas as carteiras
+daycoval ecode posicao-cotistas \
+    --format CSVBR \
+    --n-days 3 \
+    --consolidar \
+    --clienteInicial 1 \
+    --clienteFinal 999999999999 \
+    --saida ./reports
+
+# 🗓️  Calculando data útil D-3...
+#    Data de referência: 2025-08-30
+# 👥 Executando endpoint 45 - TODAS AS CARTEIRAS (104)
+#    Consolidação: ✅ ATIVA (formato: CSV)
+```
+
+### 🔧 Parâmetros dos Comandos Enhanced v2.1
+
+| Parâmetro | Todos os Endpoints | Descrição | Exemplo |
+|-----------|-------------------|-----------|---------|
+| `--n-days` | ✅ | Dias úteis atrás (substitui datas manuais) | `--n-days 5` = D-5 |
+| `--consolidar` | ✅ | Consolida múltiplos fundos em 1 arquivo | `--consolidar` |
+| `--formato-consolidado` | ✅ | Formato consolidado (csv\|pdf) | `--formato-consolidado csv` |
+| `--carteira` | ✅ | Carteira específica (omitir = todas) | `--carteira 1234` |
+| `--saida` | ✅ | Diretório de saída | `--saida ./reports` |
+
+### 💡 Vantagens dos Comandos Enhanced v2.1
+
+#### 🎯 Simplicidade
+- **Sem cálculo manual**: `--n-days 5` vs `--dataInicial 2025-08-25 --dataFinal 2025-08-29`
+- **Calendário automático**: Considera feriados e fins de semana automaticamente
+- **Uma linha = 104 relatórios**: Processa todos os fundos + consolida em 1 comando
+
+#### ⚡ Performance
+- **Cache thread-safe**: Consulta DB uma vez, reutiliza para todos os fundos
+- **Consolidação otimizada**: Conversão numérica inteligente (BR/US formats)
+- **Metadata automática**: Inclui estatísticas e origem dos dados
+
+#### 🔒 Confiabilidade
+- **Thread safety**: Safe para execução paralela
+- **Validação robusta**: Verifica formato de dados antes de processar
+- **Error handling**: Continua processamento mesmo com falhas pontuais
 
 ### Quando Usar Enhanced vs Padrão
 
